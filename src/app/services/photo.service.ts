@@ -2,7 +2,8 @@ import { Injectable } from '@angular/core';
 import { Camera, CameraResultType, CameraSource, Photo } from '@capacitor/camera';
 import { Filesystem, Directory } from '@capacitor/filesystem';
 import { Preferences } from '@capacitor/preferences';
-
+import { Platform } from '@ionic/angular';
+import { Capacitor } from '@capacitor/core';
 
 @Injectable({
   providedIn: 'root'
@@ -10,8 +11,10 @@ import { Preferences } from '@capacitor/preferences';
 export class PhotoService {
   public photos: UserPhoto[] = [];
   private PHOTO_STORAGE: string = "photos";
+  private platform: Platform;
 
-  constructor() { 
+  constructor(platform: Platform) { 
+    this.platform = platform;
     Preferences.remove({ key: this.PHOTO_STORAGE });
   }
 
@@ -43,20 +46,35 @@ export class PhotoService {
  data: base64Data,
  directory: Directory.Data
  });
+ if (this.platform.is('hybrid')) {
+  return {
+  filepath: savedFile.uri,
+  webviewPath: Capacitor.convertFileSrc(savedFile.uri),
+  };
+  }
+  else {
 
  return {
  filepath: fileName,
  webviewPath: photo.webPath
  };
-
+  }
    }
 
    private async readAsBase64(photo: Photo) {
-
+    if (this.platform.is('hybrid')) {
+    const file = await Filesystem.readFile({
+      path: photo.path!
+      });
+      return file.data;
+      }
+      else {
     const response = await fetch(photo.webPath!);
     const blob = await response.blob();
     return await this.convertBlobToBase64(blob) as string;
    }
+  }
+
    private convertBlobToBase64 = (blob: Blob) => new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onerror = reject;
@@ -71,10 +89,8 @@ export class PhotoService {
   
     const photoList = await Preferences.get({ key: this.PHOTO_STORAGE });
     this.photos = JSON.parse(photoList.value!) || [];
-  
-
-   
-for (let photo of this.photos) {
+    if (!this.platform.is('hybrid')) { {
+    for (let photo of this.photos) {
 
   const readFile = await Filesystem.readFile({
   path: photo.filepath,
@@ -84,10 +100,11 @@ for (let photo of this.photos) {
   photo.webviewPath = `data:image/jpeg;base64,${readFile.data}`;
  }
    }
-   
+  }
 }
-
-export interface UserPhoto {
+}
+ export interface UserPhoto {
   filepath: string;
   webviewPath: string | undefined;
  }
+
