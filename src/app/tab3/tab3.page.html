@@ -34,7 +34,7 @@
   <ion-card-content>
     <ion-list>
       <ion-item *ngFor="let login of database.logins">
-        <ion-label>{{ login.email }} </ion-label>
+        <ion-label>{{ login.email }}</ion-label>
         <p>{{ login.logInDate | dateAgo }}<p>
       </ion-item>
     </ion-list>
